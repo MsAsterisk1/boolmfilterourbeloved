@@ -82,7 +82,7 @@ public class BloomFilter<E> {
      */
     private void reallocate() {
         int newLength = (int) (filter.length * REALLOC_RATIO);
-        filter = Arrays.copyOf(filter, capacity);
+        filter = Arrays.copyOf(filter, newLength);
     }
 
     /**
