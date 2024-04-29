@@ -1,9 +1,7 @@
-import java.lang.Math;
 import java.util.Arrays;
 
 public class BloomFilter<E> {
     private final boolean[] filter;
-    private int capacity;
 
     // number of elements inserted
     private int size;
@@ -12,15 +10,18 @@ public class BloomFilter<E> {
     private final int numHashes;
 
     // the desired maximum false positive rate
-    private static final double FPR_THRESHOLD = 0.05f;
+    private static final double DEFAULT_FPR = 0.05f;
 
-    public BloomFilter(int expectedNumElements) {
+    public BloomFilter(int expectedNumElements, double desiredFPR) {
         this.size = 0;
 
-        this.capacity = (int) Math.ceil(expectedNumElements * calcIdealBitsPerElement());
-        this.filter = new boolean[capacity];
+        this.filter = new boolean[(int) Math.ceil(expectedNumElements * calcIdealBitsPerElement(desiredFPR))];
 
-        this.numHashes = calcIdealNumHash();
+        this.numHashes = calcIdealNumHash(desiredFPR);
+    }
+
+    public BloomFilter(int expectedNumElements) {
+        this(expectedNumElements, DEFAULT_FPR);
     }
 
     /**
@@ -28,12 +29,12 @@ public class BloomFilter<E> {
      * @param item The item to insert
      */
     public void insert(E item) {
-        size++;
-
         int[] hashIndices = hash(item);
         for (int i : hashIndices) {
             filter[i] = true;
         }
+
+        size++;
     }
 
     /**
@@ -43,7 +44,16 @@ public class BloomFilter<E> {
      */
     public boolean contains(E item) {
         int[] hashIndices = hash(item);
-        return Arrays.stream(hashIndices).allMatch(i -> filter[i]);
+
+        boolean match = true;
+        for (int i : hashIndices) {
+            if (!filter[i]) {
+                match = false;
+                break;
+            }
+        }
+
+        return match;
     }
 
     /**
@@ -52,7 +62,7 @@ public class BloomFilter<E> {
      */
     public double expectedFPR() {
         return Math.pow(1 - Math.exp((double) (-1 * (numHashes * size))
-                / capacity), numHashes);
+                / filter.length), numHashes);
     }
 
     /**
@@ -62,9 +72,12 @@ public class BloomFilter<E> {
      */
     private int[] hash(E item) {
         int[] hashIndices = new int[numHashes];
-        hashIndices[0] = Math.abs(String.valueOf(item).hashCode()) % capacity;
-        for (int i = 1; i < numHashes; i++) {
-            hashIndices[i] = Math.abs(String.valueOf(hashIndices[i - 1] ^ i * item.hashCode()).hashCode()) % capacity;
+//        hashIndices[0] = Math.abs(String.valueOf(item).hashCode()) % filter.length;
+//        for (int i = 1; i < numHashes; i++) {
+//            hashIndices[i] = Math.abs(String.valueOf(hashIndices[i - 1] * i * item.hashCode()).hashCode()) % filter.length;
+//        }
+        for (int i = 0; i < numHashes; i++) {
+            hashIndices[i] = (((String.valueOf(item).repeat(i + 1).hashCode()) % filter.length) + filter.length) % filter.length;
         }
 
         return hashIndices;
@@ -74,14 +87,14 @@ public class BloomFilter<E> {
      * Calculates the ideal number of hash functions to use given the FPR threshold
      * @return The ideal number of hashes
      */
-    private int calcIdealNumHash() {
-        return (int) Math.ceil(-Math.log(FPR_THRESHOLD) / Math.log(2));
+    private int calcIdealNumHash(double falsePositiveRate) {
+        return (int) Math.ceil(-Math.log(falsePositiveRate) / Math.log(2));
     }
 
     /**
      * Calculates the ideal number of bits per element for the desired false positive rate
      */
-    private double calcIdealBitsPerElement() {
-        return -Math.log(FPR_THRESHOLD) / (Math.log(2) * Math.log(2));
+    private double calcIdealBitsPerElement(double falsePositiveRate) {
+        return -Math.log(falsePositiveRate) / (Math.log(2) * Math.log(2));
     }
 }
