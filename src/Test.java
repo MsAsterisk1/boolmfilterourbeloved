@@ -29,6 +29,7 @@ public class Test {
             }
 
             int falsePositives = 0;
+            int falseNegatives = 0;
 
             for (String[] csvLine : csvContents) {
                 boolean flaggedAsMalicious = urlFilter.contains(csvLine[0]);
@@ -37,6 +38,10 @@ public class Test {
 
                 if (flaggedAsMalicious && isBenign) {
                     falsePositives++;
+                }
+
+                if (!flaggedAsMalicious && !isBenign) {
+                    falseNegatives++;
                 }
             }
 
@@ -48,7 +53,9 @@ public class Test {
             System.out.printf("    %d benign    %d malicious%n", csvContents.size() - malicious.size() - falsePositives, malicious.size() + falsePositives);
             System.out.println();
             System.out.printf("False positive rate: %f%n", (double) falsePositives / (csvContents.size() - malicious.size()));
-            System.out.printf("Expected FPR: %f", urlFilter.expectedFPR());
+            System.out.printf("Expected FPR: %f%n", urlFilter.expectedFPR());
+            System.out.printf("False negative rate: %f%n", (double) falseNegatives / (malicious.size() + falseNegatives));
+            System.out.printf("Expected FNR: %f", 0.0);
 
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
